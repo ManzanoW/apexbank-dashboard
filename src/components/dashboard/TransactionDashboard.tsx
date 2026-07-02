@@ -1,12 +1,25 @@
 "use client";
 
-import React, { useState, ComponentProps } from 'react';
+import React, { useState } from 'react';
 import { useTransactions } from './useTransactions';
 import { TransactionType } from './types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function TransactionDashboard() {
-  const { transactions, balance, filter, setFilter, isLoading, isSubmitting, addTransaction, chartData } = useTransactions();
+  const { 
+    transactions, 
+    totalCount, 
+    balance, 
+    filter, 
+    setFilter, 
+    currentPage, 
+    setCurrentPage, 
+    totalPages, 
+    isLoading, 
+    isSubmitting, 
+    addTransaction, 
+    chartData 
+  } = useTransactions();
   
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
@@ -31,7 +44,7 @@ export default function TransactionDashboard() {
       </div>
       
       {/* Grid de Resumos (Saldo + Gráfico) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Card de Saldo */}
         <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200/80 flex flex-col justify-center">
           <p className="m-0 text-xs text-gray-500 font-semibold uppercase tracking-wider">Saldo Total Disponível</p>
@@ -55,25 +68,14 @@ export default function TransactionDashboard() {
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
                 <Tooltip 
-                    formatter={(value: unknown) => {
-                        // 1. Tratamento defensivo caso o valor seja nulo ou indefinido
-                        if (value === undefined || value === null) return ['', 'Total'];
-    
-                        // 2. Tratamento defensivo caso o Recharts passe uma array de valores
-                        const rawValue = Array.isArray(value) ? value[0] : value;
-    
-                        // 3. Conversão segura para número
-                        const numericValue = Number(rawValue);
-    
-                        // Se a conversão falhar e gerar um NaN, exibe o valor original como string de forma segura
-                        if (isNaN(numericValue)) return [String(rawValue), 'Total'];
-
-                        return [
-                            numericValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), 
-                            'Total'
-                        ];
-                    }}
-                    contentStyle={{ fontSize: '12px', borderRadius: '8px' }}
+                  formatter={(value: unknown) => {
+                    if (value === undefined || value === null) return ['', 'Total'];
+                    const rawValue = Array.isArray(value) ? value[0] : value;
+                    const numericValue = Number(rawValue);
+                    if (isNaN(numericValue)) return [String(rawValue), 'Total'];
+                    return [numericValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), 'Total'];
+                  }}
+                  contentStyle={{ fontSize: '12px', borderRadius: '8px' }}
                 />
                 <Bar dataKey="valor" radius={[4, 4, 0, 0]} />
               </BarChart>
@@ -91,7 +93,7 @@ export default function TransactionDashboard() {
               <label className="block text-xs font-medium text-gray-500 mb-1">Descrição</label>
               <input
                 type="text"
-                placeholder="Ex: Aluguel, Salário"
+                placeholder="Ex: Aluguel"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 disabled={isSubmitting || isLoading}
@@ -124,7 +126,7 @@ export default function TransactionDashboard() {
                   type === 'DEBIT' ? 'bg-red-50 text-bank-danger border-red-200' : 'bg-white text-gray-500 border-gray-200'
                 }`}
               >
-                Saída (Débito)
+                Saída
               </button>
               <button
                 type="button"
@@ -134,7 +136,7 @@ export default function TransactionDashboard() {
                   type === 'CREDIT' ? 'bg-green-50 text-bank-success border-green-200' : 'bg-white text-gray-500 border-gray-200'
                 }`}
               >
-                Entrada (Crédito)
+                Entrada
               </button>
             </div>
 
@@ -152,7 +154,10 @@ export default function TransactionDashboard() {
       {/* Seção do Extrato */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200/80 p-5">
         <div className="flex items-center justify-between mb-4">
-          <h4 className="text-sm font-bold text-gray-900">Histórico de Transações</h4>
+          <div>
+            <h4 className="text-sm font-bold text-gray-900">Histórico de Transações</h4>
+            <p className="text-[11px] text-gray-400 mt-0.5">Mostrando {transactions.length} de {totalCount} registros</p>
+          </div>
           <div className="flex gap-1.5 bg-gray-100 p-1 rounded-lg">
             {(['ALL', 'CREDIT', 'DEBIT'] as const).map((t) => (
               <button
@@ -168,7 +173,7 @@ export default function TransactionDashboard() {
           </div>
         </div>
 
-        <ul className="divide-y divide-gray-100 border-t border-gray-100">
+        <ul className="divide-y divide-gray-100 border-t border-gray-100 mb-4">
           {isLoading ? (
             Array.from({ length: 3 }).map((_, i) => (
               <li key={i} className="flex justify-between py-4 items-center">
@@ -193,6 +198,29 @@ export default function TransactionDashboard() {
             ))
           )}
         </ul>
+
+        {/* Barra de Navegação de Páginas (A nova funcionalidade) */}
+        {!isLoading && totalPages > 1 && (
+          <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1 text-xs font-semibold border border-gray-200 rounded-md bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-40 disabled:hover:bg-white transition-colors"
+            >
+              Anterior
+            </button>
+            <span className="text-xs text-gray-500 font-medium">
+              Página {currentPage} de {totalPages}
+            </span>
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1 text-xs font-semibold border border-gray-200 rounded-md bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-40 disabled:hover:bg-white transition-colors"
+            >
+              Próxima
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
