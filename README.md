@@ -21,9 +21,8 @@ This project stands out for its high reliability. Core hooks and business branch
 - **Branch Coverage:** Achieved **100% Statements & Branch Coverage**, ensuring every mathematical outcome is safe from regression.
 
 Run tests locally with coverage metrics:
-\`\`\`bash
+```bash
 npm run test:coverage
-\`\`\`
 
 ---
 *Developed as a high-fidelity front-end engineering portfolio piece.*
