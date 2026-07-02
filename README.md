@@ -6,6 +6,8 @@ An advanced financial control panel built to simulate banking domain business ru
 - **Asynchronous Data State:** Simulates live API polling with dynamic **Skeleton Loaders** to provide a polished user experience during data fetching.
 - **Optimistic State Updates:** Calculations for balance and transaction history happen immediately upon submission, with full race-condition protection (disabling fields during mutation).
 - **A11y & Validation:** Semantic forms using pure React state control with native validations and visual error prevention.
+- **Data Analytics Chart:** Integrated responsive data visualization using **Recharts**, with strict type narrowing (`unknown` typing) to safely handle dynamic values without bypassing TypeScript rules.
+- **Memory-Efficient Pagination:** Implemented cursor-like local pagination to limit data volume per view, simulating real-world high-volume financial scalability.
 
 ## 🛠️ Tech Stack & Concepts Covered
 - **Framework:** Next.js (App Router)
