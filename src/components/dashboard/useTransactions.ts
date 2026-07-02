@@ -30,17 +30,24 @@ export function useTransactions() {
     return transactions.reduce((acc, curr) => acc + curr.amount, 0);
   }, [transactions]);
 
-  // Função assíncrona que simula o envio para o back-end
+  // NOVO: Agrupa dados financeiros para alimentar o gráfico de forma limpa
+  const chartData = useMemo(() => {
+    const income = transactions.filter(t => t.type === 'CREDIT').reduce((acc, t) => acc + t.amount, 0);
+    const expense = transactions.filter(t => t.type === 'DEBIT').reduce((acc, t) => acc + Math.abs(t.amount), 0);
+
+    return [
+      { name: 'Entradas', valor: income, fill: 'var(--color-bank-success)' },
+      { name: 'Saídas', valor: expense, fill: 'var(--color-bank-danger)' }
+    ];
+  }, [transactions]);
+
   const addTransaction = async (input: CreateTransactionInput) => {
     setIsSubmitting(true);
-    
-    // Simula delay de rede do servidor
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
     const newTransaction: Transaction = {
       id: Math.random().toString(36).substring(2, 9),
       description: input.description,
-      // Se for débito, guardamos o valor como negativo para as contas baterem automaticamente
       amount: input.type === 'DEBIT' ? -Math.abs(input.amount) : Math.abs(input.amount),
       type: input.type,
       date: new Date().toISOString().split('T')[0],
@@ -58,5 +65,6 @@ export function useTransactions() {
     isLoading,
     isSubmitting,
     addTransaction,
+    chartData, // Exposto para a UI
   };
 }

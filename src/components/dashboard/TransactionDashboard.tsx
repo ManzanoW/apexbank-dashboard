@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, ComponentProps } from 'react';
 import { useTransactions } from './useTransactions';
 import { TransactionType } from './types';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function TransactionDashboard() {
-  const { transactions, balance, filter, setFilter, isLoading, isSubmitting, addTransaction } = useTransactions();
+  const { transactions, balance, filter, setFilter, isLoading, isSubmitting, addTransaction, chartData } = useTransactions();
   
-  // Estados locais para controle do formulário
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [type, setType] = useState<TransactionType>('DEBIT');
@@ -16,40 +16,74 @@ export default function TransactionDashboard() {
     e.preventDefault();
     if (!description || !amount || Number(amount) <= 0) return;
 
-    await addTransaction({
-      description,
-      amount: Number(amount),
-      type,
-    });
-
-    // Reseta o formulário após a inserção bem-sucedida
+    await addTransaction({ description, amount: Number(amount), type });
     setDescription('');
     setAmount('');
   };
 
   return (
-    <div className="p-6 font-sans max-w-xl mx-auto min-h-screen bg-gray-50/50">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-6 font-sans max-w-xl mx-auto min-h-screen bg-gray-50/50 space-y-6">
+      <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-gray-900">ApexBank</h2>
           <p className="text-xs text-gray-500">Painel de Controle Financeiro</p>
         </div>
       </div>
       
-      {/* Card de Saldo */}
-      <div className="bg-white p-5 rounded-xl mb-6 shadow-sm border border-gray-200/80">
-        <p className="m-0 text-xs text-gray-500 font-semibold uppercase tracking-wider">Saldo Total Disponível</p>
-        {isLoading ? (
-          <div className="h-9 w-40 bg-gray-200 animate-pulse rounded-md mt-2" />
-        ) : (
-          <h3 className="m-0 mt-1 text-3xl font-bold tracking-tight text-gray-900">
-            {balance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-          </h3>
-        )}
+      {/* Grid de Resumos (Saldo + Gráfico) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Card de Saldo */}
+        <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200/80 flex flex-col justify-center">
+          <p className="m-0 text-xs text-gray-500 font-semibold uppercase tracking-wider">Saldo Total Disponível</p>
+          {isLoading ? (
+            <div className="h-9 w-40 bg-gray-200 animate-pulse rounded-md mt-2" />
+          ) : (
+            <h3 className="m-0 mt-1 text-3xl font-bold tracking-tight text-gray-900">
+              {balance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+            </h3>
+          )}
+        </div>
+
+        {/* Card de Análise Gráfica */}
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200/80 h-36">
+          <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-2">Fluxo de Caixa</p>
+          {isLoading ? (
+            <div className="h-20 w-full bg-gray-100 animate-pulse rounded-md" />
+          ) : (
+            <ResponsiveContainer width="100%" height="85%">
+              <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                <Tooltip 
+                    formatter={(value: unknown) => {
+                        // 1. Tratamento defensivo caso o valor seja nulo ou indefinido
+                        if (value === undefined || value === null) return ['', 'Total'];
+    
+                        // 2. Tratamento defensivo caso o Recharts passe uma array de valores
+                        const rawValue = Array.isArray(value) ? value[0] : value;
+    
+                        // 3. Conversão segura para número
+                        const numericValue = Number(rawValue);
+    
+                        // Se a conversão falhar e gerar um NaN, exibe o valor original como string de forma segura
+                        if (isNaN(numericValue)) return [String(rawValue), 'Total'];
+
+                        return [
+                            numericValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), 
+                            'Total'
+                        ];
+                    }}
+                    contentStyle={{ fontSize: '12px', borderRadius: '8px' }}
+                />
+                <Bar dataKey="valor" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
       </div>
 
       {/* Formulário de Nova Transação */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200/80 p-5 mb-6">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200/80 p-5">
         <h4 className="text-sm font-bold text-gray-900 mb-4">Nova Movimentação</h4>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
