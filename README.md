@@ -23,6 +23,6 @@ This project stands out for its high reliability. Core hooks and business branch
 Run tests locally with coverage metrics:
 ```bash
 npm run test:coverage
-
+```
 ---
 *Developed as a high-fidelity front-end engineering portfolio piece.*
