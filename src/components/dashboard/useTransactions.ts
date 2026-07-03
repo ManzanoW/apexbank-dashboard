@@ -17,11 +17,8 @@ export function useTransactions() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Carrega os dados salvos no navegador na inicialização
   useEffect(() => {
     const savedTransactions = localStorage.getItem('apexbank_transactions');
-    
-    // Simula o tempo de resposta de uma API para manter os Skeletons visíveis no início
     const timer = setTimeout(() => {
       if (savedTransactions) {
         setTransactions(JSON.parse(savedTransactions));
@@ -31,7 +28,6 @@ export function useTransactions() {
       }
       setIsLoading(false);
     }, 1200);
-
     return () => clearTimeout(timer);
   }, []);
 
@@ -84,7 +80,6 @@ export function useTransactions() {
 
   const addTransaction = async (input: CreateTransactionInput) => {
     setIsSubmitting(true);
-    // Simula atraso na rede
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
     const newTransaction: Transaction = {
@@ -98,12 +93,22 @@ export function useTransactions() {
 
     const updatedTransactions = [newTransaction, ...transactions];
     setTransactions(updatedTransactions);
-    
-    // NOVO: Persiste a lista atualizada imediatamente no localStorage do cliente
     localStorage.setItem('apexbank_transactions', JSON.stringify(updatedTransactions));
-    
     setCurrentPage(1);
     setIsSubmitting(false);
+  };
+
+  // NOVO: Função para deletar movimentações do estado e do localStorage
+  const deleteTransaction = (id: string) => {
+    const updatedTransactions = transactions.filter(t => t.id !== id);
+    setTransactions(updatedTransactions);
+    localStorage.setItem('apexbank_transactions', JSON.stringify(updatedTransactions));
+    
+    // Ajuste de segurança: Se a exclusão esvaziar a página atual, volta uma página
+    const maxPages = Math.ceil(updatedTransactions.length / ITEMS_PER_PAGE) || 1;
+    if (currentPage > maxPages) {
+      setCurrentPage(maxPages);
+    }
   };
 
   return {
@@ -119,5 +124,6 @@ export function useTransactions() {
     isSubmitting,
     addTransaction,
     chartData,
+    deleteTransaction, // Exposto para a UI
   };
 }

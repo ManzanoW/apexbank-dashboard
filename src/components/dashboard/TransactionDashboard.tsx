@@ -16,7 +16,8 @@ import {
   Wallet,
   Activity,
   CheckCircle2,
-  Tag
+  Tag,
+  Trash2
 } from 'lucide-react';
 
 export default function TransactionDashboard() {
@@ -32,7 +33,8 @@ export default function TransactionDashboard() {
     isLoading, 
     isSubmitting, 
     addTransaction, 
-    chartData 
+    chartData,
+    deleteTransaction // Resgatando do hook
   } = useTransactions();
   
   const { theme, toggleTheme, mounted } = useTheme();
@@ -183,7 +185,6 @@ export default function TransactionDashboard() {
               />
             </div>
             <div>
-              {/* NOVO: Campo de Categoria */}
               <label className="block text-xs font-bold text-text-muted mb-1.5">Categoria</label>
               <select
                 value={category}
@@ -278,7 +279,8 @@ export default function TransactionDashboard() {
             <div className="text-center py-10 text-sm font-medium text-text-muted">Nenhuma movimentação encontrada.</div>
           ) : (
             transactions.map((tx) => (
-              <li key={tx.id} className="flex justify-between py-3.5 items-center hover:bg-bg-page/40 px-2.5 -mx-2.5 rounded-xl transition-all duration-200 animate-fade-in-down">
+              // ADICIONADA A CLASSE 'group' NA LI PARA CONTROLAR OS BOTÕES INTERNOS NO HOVER
+              <li key={tx.id} className="flex justify-between py-3.5 items-center hover:bg-bg-page/40 px-2.5 -mx-2.5 rounded-xl transition-all duration-200 animate-fade-in-down group">
                 <div className="flex items-center gap-3">
                   <div className={`h-8 w-8 rounded-lg flex items-center justify-center border ${
                     tx.type === 'CREDIT' ? 'bg-green-50/50 dark:bg-green-950/10 text-bank-success border-green-100 dark:border-green-950/30' : 'bg-red-50/50 dark:bg-red-950/10 text-bank-danger border-red-100 dark:border-red-950/30'
@@ -288,7 +290,6 @@ export default function TransactionDashboard() {
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-text-main text-sm">{tx.description}</span>
-                      {/* NOVO: Tag Visual da Categoria */}
                       <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-md border border-border-custom bg-bg-page text-text-muted flex items-center gap-0.5">
                         <Tag size={8} />
                         {tx.category}
@@ -297,10 +298,23 @@ export default function TransactionDashboard() {
                     <div className="text-[11px] font-medium text-text-muted mt-0.5">{tx.date}</div>
                   </div>
                 </div>
-                <span className={`font-extrabold text-sm ${tx.type === 'CREDIT' ? 'text-bank-success' : 'text-bank-danger'}`}>
-                  {tx.type === 'CREDIT' ? '+' : ''}
-                  {tx.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                </span>
+                
+                {/* FLEX CONTAINER DIREITO: Controla o valor e o botão de exclusão que aparece no hover */}
+                <div className="flex items-center gap-3">
+                  <span className={`font-extrabold text-sm transition-all duration-200 group-hover:translate-x-[-4px] ${tx.type === 'CREDIT' ? 'text-bank-success' : 'text-bank-danger'}`}>
+                    {tx.type === 'CREDIT' ? '+' : ''}
+                    {tx.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </span>
+                  
+                  {/* Botão de Excluir Premium e Discreto */}
+                  <button
+                    onClick={() => deleteTransaction(tx.id)}
+                    className="p-1.5 rounded-lg text-text-muted hover:text-bank-danger hover:bg-red-50 dark:hover:bg-red-950/20 opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-pointer scale-90 group-hover:scale-100"
+                    title="Estornar movimentação"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               </li>
             ))
           )}
