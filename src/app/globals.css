@@ -1,7 +1,39 @@
+@import "tailwindcss";
+
 @theme {
-  --color-bank-primary: #09090b;
+  /* Cores Estáticas Customizadas do Banco */
   --color-bank-success: #16a34a;
   --color-bank-danger: #dc2626;
+
+  /* Design Tokens Padrão (Tema Claro) */
+  --color-bg-page: #f9fafb;
+  --color-bg-card: #ffffff;
+  --color-border-custom: rgba(228, 228, 231, 0.8);
+  --color-text-main: #09090b;
+  --color-text-muted: #71717a;
+  --color-btn-bg: #09090b;
+  --color-btn-text: #ffffff;
 }
 
-@import "tailwindcss";
+/* FORA DO @THEME: Sobrescrevemos as variáveis CSS nativas usando a classe .dark */
+.dark {
+  --color-bg-page: #09090b;
+  --color-bg-card: #18181b;
+  --color-border-custom: rgba(39, 39, 42, 0.8);
+  --color-text-main: #f4f4f5;
+  --color-text-muted: #a1a1aa;
+  --color-btn-bg: #f4f4f5;
+  --color-btn-text: #09090b;
+}
+
+/* Reset básico para suavizar as transições de cor do tema */
+* {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 200ms;
+}
+
+body {
+  background-color: var(--color-bg-page);
+  color: var(--color-text-main);
+}
