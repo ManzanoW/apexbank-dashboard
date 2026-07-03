@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Transaction, TransactionType, TransactionCategory, CreateTransactionInput } from './types';
 
-const MOCK_TRANSACTIONS: Transaction[] = [
+const INITIAL_MOCK_TRANSACTIONS: Transaction[] = [
   { id: '1', description: 'Pix Recebido - João', amount: 1500.00, type: 'CREDIT', category: 'Salário', date: '2026-07-01' },
   { id: '2', description: 'Pagamento Mercado', amount: -350.00, type: 'DEBIT', category: 'Alimentação', date: '2026-07-02' },
   { id: '3', description: 'Assinatura Streaming', amount: -45.90, type: 'DEBIT', category: 'Lazer', date: '2026-07-03' },
@@ -17,11 +17,21 @@ export function useTransactions() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Carrega os dados salvos no navegador na inicialização
   useEffect(() => {
+    const savedTransactions = localStorage.getItem('apexbank_transactions');
+    
+    // Simula o tempo de resposta de uma API para manter os Skeletons visíveis no início
     const timer = setTimeout(() => {
-      setTransactions(MOCK_TRANSACTIONS);
+      if (savedTransactions) {
+        setTransactions(JSON.parse(savedTransactions));
+      } else {
+        setTransactions(INITIAL_MOCK_TRANSACTIONS);
+        localStorage.setItem('apexbank_transactions', JSON.stringify(INITIAL_MOCK_TRANSACTIONS));
+      }
       setIsLoading(false);
     }, 1200);
+
     return () => clearTimeout(timer);
   }, []);
 
@@ -48,7 +58,6 @@ export function useTransactions() {
     return transactions.reduce((acc, curr) => acc + curr.amount, 0);
   }, [transactions]);
 
-  // NOVO: Gráfico agora exibe a distribuição de despesas por CATEGORIA
   const chartData = useMemo(() => {
     const categories: Record<TransactionCategory, number> = {
       'Alimentação': 0,
@@ -58,7 +67,6 @@ export function useTransactions() {
       'Outros': 0
     };
 
-    // Filtra apenas os débitos (saídas) para criar o gráfico de distribuição de gastos
     transactions
       .filter(t => t.type === 'DEBIT')
       .forEach(t => {
@@ -71,11 +79,12 @@ export function useTransactions() {
         valor: categories[key as TransactionCategory],
         fill: key === 'Alimentação' ? '#3b82f6' : key === 'Lazer' ? '#ec4899' : key === 'Moradia' ? '#eab308' : '#71717a'
       }))
-      .filter(item => item.valor > 0); // Só mostra no gráfico categorias que possuem gastos
+      .filter(item => item.valor > 0);
   }, [transactions]);
 
   const addTransaction = async (input: CreateTransactionInput) => {
     setIsSubmitting(true);
+    // Simula atraso na rede
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
     const newTransaction: Transaction = {
@@ -87,7 +96,12 @@ export function useTransactions() {
       date: new Date().toISOString().split('T')[0],
     };
 
-    setTransactions((prev) => [newTransaction, ...prev]);
+    const updatedTransactions = [newTransaction, ...transactions];
+    setTransactions(updatedTransactions);
+    
+    // NOVO: Persiste a lista atualizada imediatamente no localStorage do cliente
+    localStorage.setItem('apexbank_transactions', JSON.stringify(updatedTransactions));
+    
     setCurrentPage(1);
     setIsSubmitting(false);
   };
