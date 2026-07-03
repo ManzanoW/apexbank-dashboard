@@ -61,11 +61,11 @@ export default function TransactionDashboard() {
   }, [goal]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!description || !amount || Number(amount) <= 0) return;
+  e.preventDefault();
+  // Esta linha garante que, mesmo se o usuário tentar burlar o HTML, o sistema não aceita valores <= 0:
+  if (!description || !amount || Number(amount) <= 0) return;
 
-    // Modificado: O envio agora verifica se a transação obteve sucesso ou falhou na rede
-    const success = await addTransaction({ description, amount: Number(amount), type, category });
+  const success = await addTransaction({ description, amount: Number(amount), type, category });
     
     if (success) {
       setShowSuccessFeedback(true);
@@ -137,11 +137,12 @@ export default function TransactionDashboard() {
       
       {/* Grid de Resumos */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="bg-bg-card p-5 rounded-2xl shadow-xs border border-border-custom flex flex-col justify-between relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:scale-110 transition-transform text-text-main">
-            <Wallet size={80} />
+        <div className="bg-bg-card p-5 rounded-2xl shadow-xs border border-border-custom flex flex-col justify-between relative overflow-hidden group min-h-36">
+          <div className="absolute -right-4 -bottom-4 text-text-main opacity-[0.03] dark:opacity-[0.04] pointer-events-none group-hover:scale-110 group-hover:rotate-12 ">
+            <Wallet size={110} strokeWidth={1.5} />
           </div>
-          <div>
+
+          <div className="relative z-10">
             <p className="m-0 text-xs text-text-muted font-bold uppercase tracking-wider flex items-center gap-1.5">
               <Wallet size={13} />
               Saldo Disponível
@@ -149,7 +150,7 @@ export default function TransactionDashboard() {
             {isLoading ? (
               <div className="h-9 w-40 bg-border-custom/50 animate-pulse rounded-lg mt-3" />
             ) : (
-              <h3 className="m-0 mt-2 text-3xl font-black tracking-tight text-text-main">
+              <h3 className="m-0 mt-3 text-3xl font-black tracking-tight text-text-main">
                 {balance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </h3>
             )}
@@ -168,23 +169,54 @@ export default function TransactionDashboard() {
           ) : (
             <ResponsiveContainer width="100%" height="75%">
               <BarChart data={chartData} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
-                <XAxis dataKey="name" tick={{ fontSize: 9, fill: 'var(--color-text-muted)', fontWeight: 600 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 9, fill: 'var(--color-text-muted)', fontWeight: 600 }} axisLine={false} tickLine={false} />
+                <XAxis 
+                  dataKey="name" 
+                  tick={{ fontSize: 9, fill: 'var(--color-text-muted)', fontWeight: 600 }} 
+                  axisLine={false} 
+                  tickLine={false} 
+                />
+                <YAxis 
+                  tick={{ fontSize: 9, fill: 'var(--color-text-muted)', fontWeight: 600 }} 
+                  axisLine={false} 
+                  tickLine={false} 
+                />
                 <Tooltip 
                   formatter={(value: unknown) => {
                     if (value === undefined || value === null) return ['', 'Total'];
                     const rawValue = Array.isArray(value) ? value[0] : value;
                     return [Number(rawValue).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), 'Gasto'];
                   }}
+                  // CORREÇÃO: Força o estilo do container do balão de texto e remove bordas
                   contentStyle={{ 
                     backgroundColor: 'var(--color-bg-card)', 
                     borderColor: 'var(--color-border-custom)',
-                    color: 'var(--color-text-main)',
-                    fontSize: '11px', 
                     borderRadius: '12px',
+                    padding: '8px 12px',
+                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)'
                   }}
+                  // CORREÇÃO: Altera a cor do texto interno para garantir contraste no Dark Mode
+                  itemStyle={{
+                    color: 'var(--color-text-main)',
+                    fontSize: '11px',
+                    fontWeight: 600
+                  }}
+                  // CORREÇÃO: Altera o título interno do Tooltip caso ele apareça
+                  labelStyle={{
+                    color: 'var(--color-text-muted)',
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    marginBottom: '4px'
+                  }}
+                  // CORREÇÃO: Remove retângulo de fundo cinza/branco atrás da barra durante o hover
+                  cursor={{ fill: 'transparent' }} 
                 />
-                <Bar dataKey="valor" radius={[5, 5, 0, 0]} maxBarSize={24} />
+                <Bar 
+                  dataKey="valor" 
+                  radius={[5, 5, 0, 0]} 
+                  maxBarSize={24} 
+                  // CORREÇÃO: Remove a borda/background branca padrão ao clicar ou passar o mouse na barra
+                  style={{ outline: 'none' }}
+                />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -272,6 +304,7 @@ export default function TransactionDashboard() {
               <input
                 type="number"
                 step="0.01"
+                min="0"
                 placeholder="0,00"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
