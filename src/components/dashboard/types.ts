@@ -1,16 +1,20 @@
 export type TransactionType = 'CREDIT' | 'DEBIT';
 
+// Definição das categorias aceitas no sistema
+export type TransactionCategory = 'Alimentação' | 'Salário' | 'Lazer' | 'Moradia' | 'Outros';
+
 export interface Transaction {
   id: string;
   description: string;
   amount: number;
   type: TransactionType;
+  category: TransactionCategory; // Novo campo
   date: string;
 }
 
-// Tipo específico para a criação de uma nova transação pelo usuário
 export interface CreateTransactionInput {
   description: string;
   amount: number;
   type: TransactionType;
+  category: TransactionCategory; // Novo campo
 }

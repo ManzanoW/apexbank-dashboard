@@ -1,13 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Transaction, TransactionType, CreateTransactionInput } from './types';
+import { Transaction, TransactionType, TransactionCategory, CreateTransactionInput } from './types';
 
 const MOCK_TRANSACTIONS: Transaction[] = [
-  { id: '1', description: 'Pix Recebido - João', amount: 500.00, type: 'CREDIT', date: '2026-07-01' },
-  { id: '2', description: 'Pagamento Boleto Luz', amount: -120.50, type: 'DEBIT', date: '2026-07-02' },
-  { id: '3', description: 'Supermercado', amount: -350.00, type: 'DEBIT', date: '2026-07-02' },
-  { id: '4', description: 'Assinatura Streaming', amount: -45.90, type: 'DEBIT', date: '2026-07-03' },
-  { id: '5', description: 'Transferência Recebida', amount: 150.00, type: 'CREDIT', date: '2026-07-04' },
-  { id: '6', description: 'Restaurante Jantar', amount: -180.00, type: 'DEBIT', date: '2026-07-04' },
+  { id: '1', description: 'Pix Recebido - João', amount: 1500.00, type: 'CREDIT', category: 'Salário', date: '2026-07-01' },
+  { id: '2', description: 'Pagamento Mercado', amount: -350.00, type: 'DEBIT', category: 'Alimentação', date: '2026-07-02' },
+  { id: '3', description: 'Assinatura Streaming', amount: -45.90, type: 'DEBIT', category: 'Lazer', date: '2026-07-03' },
+  { id: '4', description: 'Conta de Energia', amount: -120.50, type: 'DEBIT', category: 'Moradia', date: '2026-07-04' },
 ];
 
 const ITEMS_PER_PAGE = 3;
@@ -27,7 +25,6 @@ export function useTransactions() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Garante que se o usuário mudar o filtro, ele volte para a página 1 automaticamente
   const handleSetFilter = (newFilter: TransactionType | 'ALL') => {
     setFilter(newFilter);
     setCurrentPage(1);
@@ -38,7 +35,6 @@ export function useTransactions() {
     return transactions.filter(t => t.type === filter);
   }, [transactions, filter]);
 
-  // Paginação dos dados filtrados
   const paginatedTransactions = useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     return filteredTransactions.slice(startIndex, startIndex + ITEMS_PER_PAGE);
@@ -52,14 +48,30 @@ export function useTransactions() {
     return transactions.reduce((acc, curr) => acc + curr.amount, 0);
   }, [transactions]);
 
+  // NOVO: Gráfico agora exibe a distribuição de despesas por CATEGORIA
   const chartData = useMemo(() => {
-    const income = transactions.filter(t => t.type === 'CREDIT').reduce((acc, t) => acc + t.amount, 0);
-    const expense = transactions.filter(t => t.type === 'DEBIT').reduce((acc, t) => acc + Math.abs(t.amount), 0);
+    const categories: Record<TransactionCategory, number> = {
+      'Alimentação': 0,
+      'Lazer': 0,
+      'Moradia': 0,
+      'Salário': 0,
+      'Outros': 0
+    };
 
-    return [
-      { name: 'Entradas', valor: income, fill: 'var(--color-bank-success)' },
-      { name: 'Saídas', valor: expense, fill: 'var(--color-bank-danger)' }
-    ];
+    // Filtra apenas os débitos (saídas) para criar o gráfico de distribuição de gastos
+    transactions
+      .filter(t => t.type === 'DEBIT')
+      .forEach(t => {
+        categories[t.category] += Math.abs(t.amount);
+      });
+
+    return Object.keys(categories)
+      .map(key => ({
+        name: key,
+        valor: categories[key as TransactionCategory],
+        fill: key === 'Alimentação' ? '#3b82f6' : key === 'Lazer' ? '#ec4899' : key === 'Moradia' ? '#eab308' : '#71717a'
+      }))
+      .filter(item => item.valor > 0); // Só mostra no gráfico categorias que possuem gastos
   }, [transactions]);
 
   const addTransaction = async (input: CreateTransactionInput) => {
@@ -71,11 +83,12 @@ export function useTransactions() {
       description: input.description,
       amount: input.type === 'DEBIT' ? -Math.abs(input.amount) : Math.abs(input.amount),
       type: input.type,
+      category: input.category,
       date: new Date().toISOString().split('T')[0],
     };
 
     setTransactions((prev) => [newTransaction, ...prev]);
-    setCurrentPage(1); // Manda para a página 1 para o usuário ver o lançamento dele no topo
+    setCurrentPage(1);
     setIsSubmitting(false);
   };
 

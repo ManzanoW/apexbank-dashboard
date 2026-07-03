@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useTransactions } from './useTransactions';
 import { useTheme } from './useTheme';
-import { TransactionType } from './types';
+import { TransactionType, TransactionCategory } from './types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { 
   ArrowUpCircle, 
@@ -15,7 +15,8 @@ import {
   ChevronRight,
   Wallet,
   Activity,
-  CheckCircle2
+  CheckCircle2,
+  Tag
 } from 'lucide-react';
 
 export default function TransactionDashboard() {
@@ -39,22 +40,19 @@ export default function TransactionDashboard() {
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [type, setType] = useState<TransactionType>('DEBIT');
-  
-  // NOVO: Estado para controlar o feedback visual de sucesso no botão
+  const [category, setCategory] = useState<TransactionCategory>('Alimentação');
   const [showSuccessFeedback, setShowSuccessFeedback] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!description || !amount || Number(amount) <= 0) return;
 
-    await addTransaction({ description, amount: Number(amount), type });
+    await addTransaction({ description, amount: Number(amount), type, category });
     
-    // Ativa o feedback de sucesso
     setShowSuccessFeedback(true);
     setDescription('');
     setAmount('');
-
-    // Remove o feedback depois de 1.5 segundos
+    
     setTimeout(() => {
       setShowSuccessFeedback(false);
     }, 1500);
@@ -76,28 +74,26 @@ export default function TransactionDashboard() {
         </div>
         
         <button
-  onClick={toggleTheme}
-  className="p-2.5 rounded-xl border border-border-custom bg-bg-card hover:bg-bg-page text-text-main hover:-translate-y-0.5 active:scale-95 cursor-pointer shadow-xs transition-all duration-200 flex items-center gap-2 text-xs font-bold"
-  title="Alternar Tema"
->
-  {/* Se não estiver montado, renderiza um esqueleto estático ou estado neutro para evitar o erro de Hydration */}
-  {!mounted ? (
-    <>
-      <div className="h-4 w-4 rounded-full bg-border-custom animate-pulse" />
-      <span>Tema</span>
-    </>
-  ) : theme === 'light' ? (
-    <>
-      <Moon size={15} className="text-indigo-500 animate-pulse" />
-      <span>Escuro</span>
-    </>
-  ) : (
-    <>
-      <Sun size={15} className="text-amber-500" />
-      <span>Claro</span>
-    </>
-  )}
-</button>
+          onClick={toggleTheme}
+          className="p-2.5 rounded-xl border border-border-custom bg-bg-card hover:bg-bg-page text-text-main hover:-translate-y-0.5 active:scale-95 cursor-pointer shadow-xs transition-all duration-200 flex items-center gap-2 text-xs font-bold"
+        >
+          {!mounted ? (
+            <>
+              <div className="h-4 w-4 rounded-full bg-border-custom animate-pulse" />
+              <span>Tema</span>
+            </>
+          ) : theme === 'light' ? (
+            <>
+              <Moon size={15} className="text-indigo-500 animate-pulse" />
+              <span>Escuro</span>
+            </>
+          ) : (
+            <>
+              <Sun size={15} className="text-amber-500" />
+              <span>Claro</span>
+            </>
+          )}
+        </button>
       </div>
       
       {/* Grid de Resumos */}
@@ -124,31 +120,32 @@ export default function TransactionDashboard() {
         <div className="bg-bg-card p-4 rounded-2xl shadow-xs border border-border-custom h-36 flex flex-col justify-between">
           <p className="text-xs text-text-muted font-bold uppercase tracking-wider flex items-center gap-1.5">
             <Activity size={13} />
-            Fluxo de Caixa
+            Distribuição de Despesas
           </p>
           {isLoading ? (
             <div className="h-20 w-full bg-border-custom/50 animate-pulse rounded-xl mt-2" />
+          ) : chartData.length === 0 ? (
+            <p className="text-[11px] text-text-muted font-medium m-auto">Sem despesas registradas para análise.</p>
           ) : (
             <ResponsiveContainer width="100%" height="75%">
               <BarChart data={chartData} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
-                <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'var(--color-text-muted)', fontWeight: 600 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: 'var(--color-text-muted)', fontWeight: 600 }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 9, fill: 'var(--color-text-muted)', fontWeight: 600 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 9, fill: 'var(--color-text-muted)', fontWeight: 600 }} axisLine={false} tickLine={false} />
                 <Tooltip 
                   formatter={(value: unknown) => {
                     if (value === undefined || value === null) return ['', 'Total'];
                     const rawValue = Array.isArray(value) ? value[0] : value;
-                    return [Number(rawValue).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), 'Total'];
+                    return [Number(rawValue).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), 'Gasto'];
                   }}
                   contentStyle={{ 
                     backgroundColor: 'var(--color-bg-card)', 
                     borderColor: 'var(--color-border-custom)',
                     color: 'var(--color-text-main)',
                     fontSize: '11px', 
-                    fontWeight: 600,
                     borderRadius: '12px',
                   }}
                 />
-                <Bar dataKey="valor" radius={[5, 5, 0, 0]} maxBarSize={32} />
+                <Bar dataKey="valor" radius={[5, 5, 0, 0]} maxBarSize={24} />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -157,20 +154,18 @@ export default function TransactionDashboard() {
 
       {/* Formulário de Nova Transação */}
       <div className="bg-bg-card rounded-2xl shadow-xs border border-border-custom p-5">
-        <h4 className="text-sm font-bold text-text-main mb-4 flex items-center gap-1.5">
-          Lançamento Rápido
-        </h4>
+        <h4 className="text-sm font-bold text-text-main mb-4">Lançamento Rápido</h4>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="sm:col-span-1">
               <label className="block text-xs font-bold text-text-muted mb-1.5">Descrição</label>
               <input
                 type="text"
-                placeholder="Mercado, Salário..."
+                placeholder="Ex: Aluguel"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 disabled={isSubmitting || isLoading}
-                className="w-full text-sm font-medium px-3 py-2.5 bg-bg-page border border-border-custom rounded-xl text-text-main focus:outline-none focus:ring-2 focus:ring-text-main/5 focus:border-text-main transition-all disabled:opacity-50 placeholder:text-text-muted/50"
+                className="w-full text-sm font-medium px-3 py-2.5 bg-bg-page border border-border-custom rounded-xl text-text-main focus:outline-none focus:ring-2 focus:ring-text-main/5 focus:border-text-main placeholder:text-text-muted/50"
                 required
               />
             </div>
@@ -183,9 +178,25 @@ export default function TransactionDashboard() {
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 disabled={isSubmitting || isLoading}
-                className="w-full text-sm font-medium px-3 py-2.5 bg-bg-page border border-border-custom rounded-xl text-text-main focus:outline-none focus:ring-2 focus:ring-text-main/5 focus:border-text-main transition-all disabled:opacity-50 placeholder:text-text-muted/50"
+                className="w-full text-sm font-medium px-3 py-2.5 bg-bg-page border border-border-custom rounded-xl text-text-main focus:outline-none focus:ring-2 focus:ring-text-main/5 focus:border-text-main placeholder:text-text-muted/50"
                 required
               />
+            </div>
+            <div>
+              {/* NOVO: Campo de Categoria */}
+              <label className="block text-xs font-bold text-text-muted mb-1.5">Categoria</label>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value as TransactionCategory)}
+                disabled={isSubmitting || isLoading}
+                className="w-full text-sm font-semibold px-3 py-2.5 bg-bg-page border border-border-custom rounded-xl text-text-main focus:outline-none focus:ring-2 focus:ring-text-main/5 focus:border-text-main cursor-pointer"
+              >
+                <option value="Alimentação">Alimentação</option>
+                <option value="Salário">Salário</option>
+                <option value="Lazer">Lazer</option>
+                <option value="Moradia">Moradia</option>
+                <option value="Outros">Outros</option>
+              </select>
             </div>
           </div>
 
@@ -197,7 +208,7 @@ export default function TransactionDashboard() {
                 disabled={isSubmitting || isLoading}
                 className={`px-3 py-2 text-xs font-bold rounded-xl border transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${
                   type === 'DEBIT' 
-                    ? 'bg-red-50 dark:bg-red-950/20 text-bank-danger border-red-200 dark:border-red-900/40 shadow-xs' 
+                    ? 'bg-red-50 dark:bg-red-950/20 text-bank-danger border-red-200 dark:border-red-900/40' 
                     : 'bg-bg-card text-text-muted border-border-custom hover:bg-bg-page'
                 }`}
               >
@@ -210,7 +221,7 @@ export default function TransactionDashboard() {
                 disabled={isSubmitting || isLoading}
                 className={`px-3 py-2 text-xs font-bold rounded-xl border transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${
                   type === 'CREDIT' 
-                    ? 'bg-green-50 dark:bg-green-950/20 text-bank-success border-green-200 dark:border-green-900/40 shadow-xs' 
+                    ? 'bg-green-50 dark:bg-green-950/20 text-bank-success border-green-200 dark:border-green-900/40' 
                     : 'bg-bg-card text-text-muted border-border-custom hover:bg-bg-page'
                 }`}
               >
@@ -219,29 +230,14 @@ export default function TransactionDashboard() {
               </button>
             </div>
 
-            {/* Botão com Feedback de Sucesso Dinâmico */}
             <button
               type="submit"
               disabled={isSubmitting || isLoading || !description || !amount}
               className={`text-xs font-bold px-4 py-2.5 rounded-xl hover:-translate-y-0.5 active:scale-95 shadow-md transition-all cursor-pointer disabled:opacity-30 disabled:pointer-events-none flex items-center gap-1.5 ${
-                showSuccessFeedback 
-                  ? 'bg-bank-success text-white shadow-green-500/10' 
-                  : 'bg-btn-bg text-btn-text shadow-text-main/5'
+                showSuccessFeedback ? 'bg-bank-success text-white' : 'bg-btn-bg text-btn-text'
               }`}
             >
-              {isSubmitting ? (
-                'Processando...'
-              ) : showSuccessFeedback ? (
-                <>
-                  <CheckCircle2 size={14} className="animate-bounce" />
-                  <span>Sucesso!</span>
-                </>
-              ) : (
-                <>
-                  <Plus size={14} />
-                  <span>Confirmar</span>
-                </>
-              )}
+              {isSubmitting ? 'Processando...' : showSuccessFeedback ? <><CheckCircle2 size={14} className="animate-bounce" /> Sucesso!</> : <><Plus size={14} /> Confirmar</>}
             </button>
           </div>
         </form>
@@ -260,8 +256,9 @@ export default function TransactionDashboard() {
                 key={t}
                 onClick={() => setFilter(t)}
                 disabled={isLoading}
-                className={`px-3 py-1.5 text-[11px] font-bold rounded-lg transition-all cursor-pointer disabled:opacity-50
-                  ${filter === t ? 'bg-bg-card text-text-main shadow-xs border border-border-custom' : 'text-text-muted hover:text-text-main'}`}
+                className={`px-3 py-1.5 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
+                  filter === t ? 'bg-bg-card text-text-main shadow-xs border border-border-custom' : 'text-text-muted hover:text-text-main'
+                }`}
               >
                 {t === 'ALL' ? 'Todos' : t === 'CREDIT' ? 'Entradas' : 'Saídas'}
               </button>
@@ -281,18 +278,22 @@ export default function TransactionDashboard() {
             <div className="text-center py-10 text-sm font-medium text-text-muted">Nenhuma movimentação encontrada.</div>
           ) : (
             transactions.map((tx) => (
-              // NOVO: Adicionada a classe utilitária de animação 'animate-fade-in-down' aqui!
               <li key={tx.id} className="flex justify-between py-3.5 items-center hover:bg-bg-page/40 px-2.5 -mx-2.5 rounded-xl transition-all duration-200 animate-fade-in-down">
                 <div className="flex items-center gap-3">
                   <div className={`h-8 w-8 rounded-lg flex items-center justify-center border ${
-                    tx.type === 'CREDIT' 
-                      ? 'bg-green-50/50 dark:bg-green-950/10 text-bank-success border-green-100 dark:border-green-950/30' 
-                      : 'bg-red-50/50 dark:bg-red-950/10 text-bank-danger border-red-100 dark:border-red-950/30'
+                    tx.type === 'CREDIT' ? 'bg-green-50/50 dark:bg-green-950/10 text-bank-success border-green-100 dark:border-green-950/30' : 'bg-red-50/50 dark:bg-red-950/10 text-bank-danger border-red-100 dark:border-red-950/30'
                   }`}>
                     {tx.type === 'CREDIT' ? <ArrowUpCircle size={15} /> : <ArrowDownCircle size={15} />}
                   </div>
                   <div>
-                    <div className="font-bold text-text-main text-sm">{tx.description}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-text-main text-sm">{tx.description}</span>
+                      {/* NOVO: Tag Visual da Categoria */}
+                      <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-md border border-border-custom bg-bg-page text-text-muted flex items-center gap-0.5">
+                        <Tag size={8} />
+                        {tx.category}
+                      </span>
+                    </div>
                     <div className="text-[11px] font-medium text-text-muted mt-0.5">{tx.date}</div>
                   </div>
                 </div>
@@ -311,17 +312,15 @@ export default function TransactionDashboard() {
             <button
               onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
-              className="p-1.5 border border-border-custom rounded-lg bg-bg-card hover:bg-bg-page text-text-main disabled:opacity-30 cursor-pointer disabled:cursor-default transition-all flex items-center gap-1 text-xs font-bold"
+              className="p-1.5 border border-border-custom rounded-lg bg-bg-card hover:bg-bg-page text-text-main disabled:opacity-30 cursor-pointer transition-all flex items-center gap-1 text-xs font-bold"
             >
               <ChevronLeft size={14} />
             </button>
-            <span className="text-xs text-text-muted font-bold">
-              {currentPage} / {totalPages}
-            </span>
+            <span className="text-xs text-text-muted font-bold">{currentPage} / {totalPages}</span>
             <button
               onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
               disabled={currentPage === totalPages}
-              className="p-1.5 border border-border-custom rounded-lg bg-bg-card hover:bg-bg-page text-text-main disabled:opacity-30 cursor-pointer disabled:cursor-default transition-all flex items-center gap-1 text-xs font-bold"
+              className="p-1.5 border border-border-custom rounded-lg bg-bg-card hover:bg-bg-page text-text-main disabled:opacity-30 cursor-pointer transition-all flex items-center gap-1 text-xs font-bold"
             >
               <ChevronRight size={14} />
             </button>
