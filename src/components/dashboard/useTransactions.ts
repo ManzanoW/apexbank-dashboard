@@ -1,24 +1,19 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Transaction, TransactionType, TransactionCategory, CreateTransactionInput, SavingsGoal } from './types';
 
-const INITIAL_MOCK_TRANSACTIONS: Transaction[] = [
-  { id: '1', description: 'Pix Recebido - João', amount: 1500.00, type: 'CREDIT', category: 'Salário', date: '2026-07-01' },
-  { id: '2', description: 'Pagamento Mercado', amount: -350.00, type: 'DEBIT', category: 'Alimentação', date: '2026-07-02' },
-  { id: '3', description: 'Assinatura Streaming', amount: -45.90, type: 'DEBIT', category: 'Lazer', date: '2026-07-03' },
-  { id: '4', description: 'Conta de Energia', amount: -120.50, type: 'DEBIT', category: 'Moradia', date: '2026-07-04' },
-];
+const INITIAL_MOCK_TRANSACTIONS: Transaction[] = [];
 
 const DEFAULT_GOAL: SavingsGoal = {
   title: 'Reserva de Emergência',
   targetAmount: 5000,
-  currentSaved: 450
+  currentSaved: 0
 };
 
 const ITEMS_PER_PAGE = 3;
 
 export function useTransactions() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [goal, setGoal] = useState<SavingsGoal>(DEFAULT_GOAL); // NOVO ESTADO
+  const [goal, setGoal] = useState<SavingsGoal>(DEFAULT_GOAL);
   const [filter, setFilter] = useState<TransactionType | 'ALL'>('ALL');
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
@@ -112,7 +107,6 @@ export function useTransactions() {
     if (currentPage > maxPages) setCurrentPage(maxPages);
   };
 
-  // NOVO: Altera o valor guardado na meta e persiste
   const updateGoalAmount = (amountToSave: number) => {
     const updatedGoal = { ...goal, currentSaved: Math.max(0, amountToSave) };
     setGoal(updatedGoal);
@@ -133,7 +127,7 @@ export function useTransactions() {
     addTransaction,
     chartData,
     deleteTransaction,
-    goal, // Exportado
-    updateGoalAmount // Exportado
+    goal,
+    updateGoalAmount
   };
 }
