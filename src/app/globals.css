@@ -26,6 +26,22 @@
   --color-btn-text: #09090b;
 }
 
+/* Animação Customizada para Novas Transações */
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@utility animate-fade-in-down {
+  animation: fadeInDown 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 /* Reset básico para suavizar as transições de cor do tema */
 * {
   transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
@@ -37,3 +53,4 @@ body {
   background-color: var(--color-bg-page);
   color: var(--color-text-main);
 }
+

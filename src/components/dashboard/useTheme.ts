@@ -1,33 +1,27 @@
 import { useEffect, useState } from 'react';
 
 export function useTheme() {
-  // Inicialização preguiçosa: Executa apenas UMA vez no nascimento do componente
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    // Como o Next.js roda no servidor primeiro, checamos se estamos no navegador
-    if (typeof window !== 'undefined') {
-      const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
-      if (savedTheme) return savedTheme;
-      
-      const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      return systemPrefersDark ? 'dark' : 'light';
-    }
-    return 'light';
-  });
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [mounted, setMounted] = useState(false); // NOVO: Controla se o código já está rodando no cliente
 
-  // O useEffect agora serve APENAS para sincronizar o estado do React com o mundo externo (DOM)
   useEffect(() => {
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [theme]); // Roda sempre que o tema mudar
+    // Sincroniza o estado inicial do botão com a classe real aplicada pelo script do head
+    const isDark = document.documentElement.classList.contains('dark');
+    setTheme(isDark ? 'dark' : 'light');
+    setMounted(true); // O componente foi montado com sucesso no navegador!
+  }, []);
 
   const toggleTheme = () => {
     const newTheme = theme === 'light' ? 'dark' : 'light';
     setTheme(newTheme);
     localStorage.setItem('theme', newTheme);
+
+    if (newTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
   };
 
-  return { theme, toggleTheme };
+  return { theme, toggleTheme, mounted }; // Expondo o estado montado
 }

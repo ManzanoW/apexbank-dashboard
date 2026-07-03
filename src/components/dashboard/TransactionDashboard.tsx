@@ -14,7 +14,8 @@ import {
   ChevronLeft, 
   ChevronRight,
   Wallet,
-  Activity
+  Activity,
+  CheckCircle2
 } from 'lucide-react';
 
 export default function TransactionDashboard() {
@@ -33,25 +34,36 @@ export default function TransactionDashboard() {
     chartData 
   } = useTransactions();
   
-  const { theme, toggleTheme } = useTheme();
+  const { theme, toggleTheme, mounted } = useTheme();
 
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [type, setType] = useState<TransactionType>('DEBIT');
+  
+  // NOVO: Estado para controlar o feedback visual de sucesso no botão
+  const [showSuccessFeedback, setShowSuccessFeedback] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!description || !amount || Number(amount) <= 0) return;
 
     await addTransaction({ description, amount: Number(amount), type });
+    
+    // Ativa o feedback de sucesso
+    setShowSuccessFeedback(true);
     setDescription('');
     setAmount('');
+
+    // Remove o feedback depois de 1.5 segundos
+    setTimeout(() => {
+      setShowSuccessFeedback(false);
+    }, 1500);
   };
 
   return (
     <div className="p-6 font-sans max-w-xl mx-auto min-h-screen space-y-6">
       
-      {/* Header Avançado e Premium */}
+      {/* Header */}
       <div className="flex items-center justify-between pb-5 border-b border-border-custom">
         <div className="flex items-center gap-2.5">
           <div className="h-10 w-10 bg-btn-bg text-btn-text rounded-xl flex items-center justify-center shadow-md shadow-text-main/5 font-black text-xl tracking-tighter">
@@ -64,27 +76,32 @@ export default function TransactionDashboard() {
         </div>
         
         <button
-          onClick={toggleTheme}
-          className="p-2.5 rounded-xl border border-border-custom bg-bg-card hover:bg-bg-page text-text-main hover:-translate-y-0.5 active:scale-95 cursor-pointer shadow-xs transition-all duration-200 flex items-center gap-2 text-xs font-bold"
-          title="Alternar Tema"
-        >
-          {theme === 'light' ? (
-            <>
-              <Moon size={15} className="text-indigo-500 animate-pulse" />
-              <span>Escuro</span>
-            </>
-          ) : (
-            <>
-              <Sun size={15} className="text-amber-500" />
-              <span>Claro</span>
-            </>
-          )}
-        </button>
+  onClick={toggleTheme}
+  className="p-2.5 rounded-xl border border-border-custom bg-bg-card hover:bg-bg-page text-text-main hover:-translate-y-0.5 active:scale-95 cursor-pointer shadow-xs transition-all duration-200 flex items-center gap-2 text-xs font-bold"
+  title="Alternar Tema"
+>
+  {/* Se não estiver montado, renderiza um esqueleto estático ou estado neutro para evitar o erro de Hydration */}
+  {!mounted ? (
+    <>
+      <div className="h-4 w-4 rounded-full bg-border-custom animate-pulse" />
+      <span>Tema</span>
+    </>
+  ) : theme === 'light' ? (
+    <>
+      <Moon size={15} className="text-indigo-500 animate-pulse" />
+      <span>Escuro</span>
+    </>
+  ) : (
+    <>
+      <Sun size={15} className="text-amber-500" />
+      <span>Claro</span>
+    </>
+  )}
+</button>
       </div>
       
-      {/* Grid de Resumos (Cards Polidos) */}
+      {/* Grid de Resumos */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Card de Saldo */}
         <div className="bg-bg-card p-5 rounded-2xl shadow-xs border border-border-custom flex flex-col justify-between relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:scale-110 transition-transform text-text-main">
             <Wallet size={80} />
@@ -104,7 +121,6 @@ export default function TransactionDashboard() {
           </div>
         </div>
 
-        {/* Card de Análise Gráfica */}
         <div className="bg-bg-card p-4 rounded-2xl shadow-xs border border-border-custom h-36 flex flex-col justify-between">
           <p className="text-xs text-text-muted font-bold uppercase tracking-wider flex items-center gap-1.5">
             <Activity size={13} />
@@ -130,7 +146,6 @@ export default function TransactionDashboard() {
                     fontSize: '11px', 
                     fontWeight: 600,
                     borderRadius: '12px',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)'
                   }}
                 />
                 <Bar dataKey="valor" radius={[5, 5, 0, 0]} maxBarSize={32} />
@@ -204,13 +219,29 @@ export default function TransactionDashboard() {
               </button>
             </div>
 
+            {/* Botão com Feedback de Sucesso Dinâmico */}
             <button
               type="submit"
               disabled={isSubmitting || isLoading || !description || !amount}
-              className="bg-btn-bg text-btn-text text-xs font-bold px-4 py-2.5 rounded-xl hover:-translate-y-0.5 active:scale-95 shadow-md shadow-text-main/5 transition-all cursor-pointer disabled:opacity-30 disabled:pointer-events-none flex items-center gap-1.5"
+              className={`text-xs font-bold px-4 py-2.5 rounded-xl hover:-translate-y-0.5 active:scale-95 shadow-md transition-all cursor-pointer disabled:opacity-30 disabled:pointer-events-none flex items-center gap-1.5 ${
+                showSuccessFeedback 
+                  ? 'bg-bank-success text-white shadow-green-500/10' 
+                  : 'bg-btn-bg text-btn-text shadow-text-main/5'
+              }`}
             >
-              <Plus size={14} />
-              {isSubmitting ? 'Processando...' : 'Confirmar'}
+              {isSubmitting ? (
+                'Processando...'
+              ) : showSuccessFeedback ? (
+                <>
+                  <CheckCircle2 size={14} className="animate-bounce" />
+                  <span>Sucesso!</span>
+                </>
+              ) : (
+                <>
+                  <Plus size={14} />
+                  <span>Confirmar</span>
+                </>
+              )}
             </button>
           </div>
         </form>
@@ -250,7 +281,8 @@ export default function TransactionDashboard() {
             <div className="text-center py-10 text-sm font-medium text-text-muted">Nenhuma movimentação encontrada.</div>
           ) : (
             transactions.map((tx) => (
-              <li key={tx.id} className="flex justify-between py-3.5 items-center hover:bg-bg-page/40 px-2.5 -mx-2.5 rounded-xl transition-all duration-200">
+              // NOVO: Adicionada a classe utilitária de animação 'animate-fade-in-down' aqui!
+              <li key={tx.id} className="flex justify-between py-3.5 items-center hover:bg-bg-page/40 px-2.5 -mx-2.5 rounded-xl transition-all duration-200 animate-fade-in-down">
                 <div className="flex items-center gap-3">
                   <div className={`h-8 w-8 rounded-lg flex items-center justify-center border ${
                     tx.type === 'CREDIT' 
@@ -273,7 +305,7 @@ export default function TransactionDashboard() {
           )}
         </ul>
 
-        {/* Barra de Navegação Premium */}
+        {/* Barra de Navegação */}
         {!isLoading && totalPages > 1 && (
           <div className="flex items-center justify-between pt-3 border-t border-border-custom">
             <button
