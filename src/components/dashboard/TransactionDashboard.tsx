@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { useTransactions } from './useTransactions';
 import { useTheme } from './useTheme';
-import { TransactionType, TransactionCategory, DateFilter } from './types';
+import { TransactionType, TransactionCategory } from './types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { 
   ArrowUpCircle, 
@@ -20,7 +20,9 @@ import {
   Tag,
   Trash2,
   Target,
-  Calendar
+  Calendar,
+  AlertTriangle,
+  X
 } from 'lucide-react';
 
 export default function TransactionDashboard() {
@@ -41,7 +43,9 @@ export default function TransactionDashboard() {
     chartData,
     deleteTransaction,
     goal,
-    updateGoalAmount
+    updateGoalAmount,
+    alert,
+    clearAlert
   } = useTransactions();
   
   const { theme, toggleTheme, mounted } = useTheme();
@@ -60,19 +64,41 @@ export default function TransactionDashboard() {
     e.preventDefault();
     if (!description || !amount || Number(amount) <= 0) return;
 
-    await addTransaction({ description, amount: Number(amount), type, category });
+    // Modificado: O envio agora verifica se a transação obteve sucesso ou falhou na rede
+    const success = await addTransaction({ description, amount: Number(amount), type, category });
     
-    setShowSuccessFeedback(true);
-    setDescription('');
-    setAmount('');
-    
-    setTimeout(() => {
-      setShowSuccessFeedback(false);
-    }, 1500);
+    if (success) {
+      setShowSuccessFeedback(true);
+      setDescription('');
+      setAmount('');
+      
+      setTimeout(() => {
+        setShowSuccessFeedback(false);
+      }, 1500);
+    }
   };
 
   return (
-    <div className="p-6 font-sans max-w-xl mx-auto min-h-screen space-y-6">
+    <div className="p-6 font-sans max-w-xl mx-auto min-h-screen space-y-6 relative">
+      
+      {/* NOVO: Toast de Alerta Dinâmico para Falhas de Rede Simuladas */}
+      {alert && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-11/12 max-w-md bg-red-50 dark:bg-zinc-900 border border-red-200 dark:border-red-950/50 p-4 rounded-xl shadow-xl animate-fade-in flex items-start gap-3">
+          <div className="text-bank-danger p-0.5 mt-0.5">
+            <AlertTriangle size={16} className="animate-pulse" />
+          </div>
+          <div className="flex-1">
+            <h5 className="text-xs font-black text-red-800 dark:text-red-400 uppercase tracking-wider">Erro de Sincronização</h5>
+            <p className="text-xs font-medium text-red-700 dark:text-zinc-400 mt-1 leading-relaxed">{alert.message}</p>
+          </div>
+          <button 
+            onClick={clearAlert}
+            className="text-text-muted hover:text-text-main p-1 rounded-lg transition-colors cursor-pointer"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
       
       {/* Header */}
       <div className="flex items-center justify-between pb-5 border-b border-border-custom">
@@ -97,7 +123,7 @@ export default function TransactionDashboard() {
             </>
           ) : theme === 'light' ? (
             <>
-              <Moon size={15} className="text-indigo-500 animate-pulse" />
+              <Moon size={15} className="text-indigo-500" />
               <span>Escuro</span>
             </>
           ) : (
@@ -304,7 +330,7 @@ export default function TransactionDashboard() {
                 showSuccessFeedback ? 'bg-bank-success text-white' : 'bg-btn-bg text-btn-text'
               }`}
             >
-              {isSubmitting ? 'Processando...' : showSuccessFeedback ? <><CheckCircle2 size={14} className="animate-bounce" /> Sucesso!</> : <><Plus size={14} /> Confirmar</>}
+              {isSubmitting ? 'Verificando rede...' : showSuccessFeedback ? <><CheckCircle2 size={14} /> Concluído</> : <><Plus size={14} /> Confirmar</>}
             </button>
           </div>
         </form>
@@ -312,11 +338,7 @@ export default function TransactionDashboard() {
 
       {/* Seção do Extrato */}
       <div className="bg-bg-card rounded-2xl shadow-xs border border-border-custom p-5 space-y-4">
-        
-        {/* FILTROS DA LISTA (Tipo + Período) */}
         <div className="flex flex-col gap-3 pb-3 border-b border-border-custom">
-          
-          {/* Linha 1: Título do Extrato e Filtros por Tipo */}
           <div className="flex items-center justify-between">
             <div>
               <h4 className="text-sm font-bold text-text-main">Histórico de Transações</h4>
@@ -338,7 +360,6 @@ export default function TransactionDashboard() {
             </div>
           </div>
 
-          {/* NOVO: Linha 2: Barra de Filtros Cronológicos (Período) */}
           <div className="flex items-center justify-between pt-1">
             <span className="text-[11px] font-bold text-text-muted flex items-center gap-1">
               <Calendar size={12} />
@@ -363,7 +384,6 @@ export default function TransactionDashboard() {
               ))}
             </div>
           </div>
-
         </div>
 
         <ul className="divide-y divide-border-custom mb-4">
@@ -406,7 +426,6 @@ export default function TransactionDashboard() {
                   <button
                     onClick={() => deleteTransaction(tx.id)}
                     className="p-1.5 rounded-lg text-text-muted hover:text-bank-danger hover:bg-red-50 dark:hover:bg-red-950/20 opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-pointer scale-90 group-hover:scale-100"
-                    title="Estornar movimentação"
                   >
                     <Trash2 size={14} />
                   </button>

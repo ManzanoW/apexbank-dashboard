@@ -1,7 +1,5 @@
 export type TransactionType = 'CREDIT' | 'DEBIT';
 export type TransactionCategory = 'Alimentação' | 'Salário' | 'Lazer' | 'Moradia' | 'Outros';
-
-// NOVO: Filtros de período aceitos
 export type DateFilter = 'ALL' | '7_DAYS' | '30_DAYS';
 
 export interface Transaction {
@@ -10,7 +8,7 @@ export interface Transaction {
   amount: number;
   type: TransactionType;
   category: TransactionCategory;
-  date: string; // Formato YYYY-MM-DD
+  date: string;
 }
 
 export interface CreateTransactionInput {
@@ -24,4 +22,10 @@ export interface SavingsGoal {
   title: string;
   targetAmount: number;
   currentSaved: number;
+}
+
+// NOVO: Interface para controle de alertas/toasts de erro no sistema
+export interface SystemAlert {
+  message: string;
+  type: 'ERROR' | 'SUCCESS';
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Transaction, TransactionType, TransactionCategory, CreateTransactionInput, SavingsGoal, DateFilter } from './types';
+import { Transaction, TransactionType, TransactionCategory, CreateTransactionInput, SavingsGoal, DateFilter, SystemAlert } from './types';
 
 const INITIAL_MOCK_TRANSACTIONS: Transaction[] = [];
 
@@ -11,17 +11,30 @@ const DEFAULT_GOAL: SavingsGoal = {
 
 const ITEMS_PER_PAGE = 3;
 
+// NOVO: Função utilitária para emular latência de rede e falhas de conexão de API (15% de chance de erro)
+const simulateApiCall = async <T>(data: T): Promise<T> => {
+  const latency = Math.floor(Math.random() * 800) + 800; // Entre 800ms e 1600ms
+  await new Promise((resolve) => setTimeout(resolve, latency));
+  
+  const hasNetworkFailure = Math.random() < 0.15; // 15% de chance de queda de conexão
+  if (hasNetworkFailure) {
+    throw new Error('Falha na conexão com o servidor. Verifique sua internet e tente novamente.');
+  }
+  
+  return data;
+};
+
 export function useTransactions() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [goal, setGoal] = useState<SavingsGoal>(DEFAULT_GOAL);
   const [filter, setFilter] = useState<TransactionType | 'ALL'>('ALL');
-  
-  // NOVO: Estado para o filtro de data
   const [dateFilter, setDateFilter] = useState<DateFilter>('ALL');
-  
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // NOVO: Estado para gerenciar notificações globais do sistema financeiro
+  const [alert, setAlert] = useState<SystemAlert | null>(null);
 
   useEffect(() => {
     const savedTransactions = localStorage.getItem('apexbank_transactions');
@@ -46,7 +59,6 @@ export function useTransactions() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Reseta a paginação ao mudar qualquer filtro
   const handleSetFilter = (newFilter: TransactionType | 'ALL') => {
     setFilter(newFilter);
     setCurrentPage(1);
@@ -57,20 +69,14 @@ export function useTransactions() {
     setCurrentPage(1);
   };
 
-  // NOVO: Filtros aninhados altamente performáticos com useMemo
   const filteredTransactions = useMemo(() => {
     return transactions.filter(t => {
-      // 1. Validação por Tipo (Entrada/Saída)
       const matchesType = filter === 'ALL' || t.type === filter;
-      
-      // 2. Validação por Período Cronológico
       if (!matchesType) return false;
       if (dateFilter === 'ALL') return true;
 
       const transactionDate = new Date(t.date + 'T00:00:00');
       const today = new Date();
-      
-      // Zera as horas para comparar apenas os dias corridos de forma precisa
       today.setHours(0, 0, 0, 0);
       transactionDate.setHours(0, 0, 0, 0);
 
@@ -97,7 +103,6 @@ export function useTransactions() {
     return transactions.reduce((acc, curr) => acc + curr.amount, 0);
   }, [transactions]);
 
-  // O gráfico passa a se basear no array filtrado atual para refletir o período selecionado
   const chartData = useMemo(() => {
     const categories: Record<TransactionCategory, number> = {
       'Alimentação': 0, 'Lazer': 0, 'Moradia': 0, 'Salário': 0, 'Outros': 0
@@ -112,24 +117,36 @@ export function useTransactions() {
     })).filter(item => item.valor > 0);
   }, [filteredTransactions]);
 
-  const addTransaction = async (input: CreateTransactionInput) => {
+  // ALTERADO: Adicionado pipeline de resiliência assíncrona try/catch com simulação de barramento de rede
+  const addTransaction = async (input: CreateTransactionInput): Promise<boolean> => {
     setIsSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    setAlert(null); // Limpa alertas anteriores antes do processamento
 
-    const newTransaction: Transaction = {
-      id: Math.random().toString(36).substring(2, 9),
-      description: input.description,
-      amount: input.type === 'DEBIT' ? -Math.abs(input.amount) : Math.abs(input.amount),
-      type: input.type,
-      category: input.category,
-      date: new Date().toISOString().split('T')[0], // Grava o dia de hoje
-    };
+    try {
+      const payload: Transaction = {
+        id: Math.random().toString(36).substring(2, 9),
+        description: input.description,
+        amount: input.type === 'DEBIT' ? -Math.abs(input.amount) : Math.abs(input.amount),
+        type: input.type,
+        category: input.category,
+        date: new Date().toISOString().split('T')[0],
+      };
 
-    const updatedTransactions = [newTransaction, ...transactions];
-    setTransactions(updatedTransactions);
-    localStorage.setItem('apexbank_transactions', JSON.stringify(updatedTransactions));
-    setCurrentPage(1);
-    setIsSubmitting(false);
+      // Dispara o barramento que pode falhar
+      const verifiedTransaction = await simulateApiCall(payload);
+
+      const updatedTransactions = [verifiedTransaction, ...transactions];
+      setTransactions(updatedTransactions);
+      localStorage.setItem('apexbank_transactions', JSON.stringify(updatedTransactions));
+      setCurrentPage(1);
+      setIsSubmitting(false);
+      return true; // Sucesso absoluto na transação
+    } catch (error) {
+      setIsSubmitting(false);
+      const errorMessage = error instanceof Error ? error.message : 'Erro crítico desconhecido.';
+      setAlert({ message: errorMessage, type: 'ERROR' });
+      return false; // Transação falhou na rede simulada
+    }
   };
 
   const deleteTransaction = (id: string) => {
@@ -146,6 +163,8 @@ export function useTransactions() {
     localStorage.setItem('apexbank_goal', JSON.stringify(updatedGoal));
   };
 
+  const clearAlert = () => setAlert(null);
+
   return {
     transactions: paginatedTransactions,
     totalCount: filteredTransactions.length,
@@ -153,7 +172,7 @@ export function useTransactions() {
     filter,
     setFilter: handleSetFilter,
     dateFilter,
-    setDateFilter: handleSetDateFilter, // Exportado
+    setDateFilter: handleSetDateFilter,
     currentPage,
     setCurrentPage,
     totalPages,
@@ -163,6 +182,8 @@ export function useTransactions() {
     chartData,
     deleteTransaction,
     goal,
-    updateGoalAmount
+    updateGoalAmount,
+    alert, // Exportado
+    clearAlert // Exportado
   };
 }
