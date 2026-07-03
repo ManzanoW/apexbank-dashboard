@@ -26,6 +26,9 @@ Features a local storage pipeline that automatically caches structural inputs ac
 ### 4. Dynamic Savings Goals Tracking
 Integrates a micro-interaction module for tracking multi-tier financial constraints. Leverages CSS utility keyframes to seamlessly handle progress-bar status re-computations without causing layout shifts.
 
+### 5. Nested Advanced Chronological Filters
+Leverages nested conditional matrix mapping inside React's `useMemo` hooks to efficiently perform client-side timeline segmentation. Users can seamlessly query logs spanning 'Last 7 Days' or 'Last 30 Days' with instant calculations across analytics distributions and local structural pagination boundaries.
+
 ---
 
 ## 📦 Local Installation

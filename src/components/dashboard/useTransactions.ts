@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Transaction, TransactionType, TransactionCategory, CreateTransactionInput, SavingsGoal } from './types';
+import { Transaction, TransactionType, TransactionCategory, CreateTransactionInput, SavingsGoal, DateFilter } from './types';
 
 const INITIAL_MOCK_TRANSACTIONS: Transaction[] = [];
 
@@ -15,6 +15,10 @@ export function useTransactions() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [goal, setGoal] = useState<SavingsGoal>(DEFAULT_GOAL);
   const [filter, setFilter] = useState<TransactionType | 'ALL'>('ALL');
+  
+  // NOVO: Estado para o filtro de data
+  const [dateFilter, setDateFilter] = useState<DateFilter>('ALL');
+  
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -42,15 +46,43 @@ export function useTransactions() {
     return () => clearTimeout(timer);
   }, []);
 
+  // Reseta a paginação ao mudar qualquer filtro
   const handleSetFilter = (newFilter: TransactionType | 'ALL') => {
     setFilter(newFilter);
     setCurrentPage(1);
   };
 
+  const handleSetDateFilter = (newDateFilter: DateFilter) => {
+    setDateFilter(newDateFilter);
+    setCurrentPage(1);
+  };
+
+  // NOVO: Filtros aninhados altamente performáticos com useMemo
   const filteredTransactions = useMemo(() => {
-    if (filter === 'ALL') return transactions;
-    return transactions.filter(t => t.type === filter);
-  }, [transactions, filter]);
+    return transactions.filter(t => {
+      // 1. Validação por Tipo (Entrada/Saída)
+      const matchesType = filter === 'ALL' || t.type === filter;
+      
+      // 2. Validação por Período Cronológico
+      if (!matchesType) return false;
+      if (dateFilter === 'ALL') return true;
+
+      const transactionDate = new Date(t.date + 'T00:00:00');
+      const today = new Date();
+      
+      // Zera as horas para comparar apenas os dias corridos de forma precisa
+      today.setHours(0, 0, 0, 0);
+      transactionDate.setHours(0, 0, 0, 0);
+
+      const differenceInTime = today.getTime() - transactionDate.getTime();
+      const differenceInDays = Math.floor(differenceInTime / (1000 * 3600 * 24));
+
+      if (dateFilter === '7_DAYS') return differenceInDays <= 7;
+      if (dateFilter === '30_DAYS') return differenceInDays <= 30;
+      
+      return true;
+    });
+  }, [transactions, filter, dateFilter]);
 
   const paginatedTransactions = useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -65,11 +97,12 @@ export function useTransactions() {
     return transactions.reduce((acc, curr) => acc + curr.amount, 0);
   }, [transactions]);
 
+  // O gráfico passa a se basear no array filtrado atual para refletir o período selecionado
   const chartData = useMemo(() => {
     const categories: Record<TransactionCategory, number> = {
       'Alimentação': 0, 'Lazer': 0, 'Moradia': 0, 'Salário': 0, 'Outros': 0
     };
-    transactions.filter(t => t.type === 'DEBIT').forEach(t => {
+    filteredTransactions.filter(t => t.type === 'DEBIT').forEach(t => {
       categories[t.category] += Math.abs(t.amount);
     });
     return Object.keys(categories).map(key => ({
@@ -77,7 +110,7 @@ export function useTransactions() {
       valor: categories[key as TransactionCategory],
       fill: key === 'Alimentação' ? '#3b82f6' : key === 'Lazer' ? '#ec4899' : key === 'Moradia' ? '#eab308' : '#71717a'
     })).filter(item => item.valor > 0);
-  }, [transactions]);
+  }, [filteredTransactions]);
 
   const addTransaction = async (input: CreateTransactionInput) => {
     setIsSubmitting(true);
@@ -89,7 +122,7 @@ export function useTransactions() {
       amount: input.type === 'DEBIT' ? -Math.abs(input.amount) : Math.abs(input.amount),
       type: input.type,
       category: input.category,
-      date: new Date().toISOString().split('T')[0],
+      date: new Date().toISOString().split('T')[0], // Grava o dia de hoje
     };
 
     const updatedTransactions = [newTransaction, ...transactions];
@@ -119,6 +152,8 @@ export function useTransactions() {
     balance,
     filter,
     setFilter: handleSetFilter,
+    dateFilter,
+    setDateFilter: handleSetDateFilter, // Exportado
     currentPage,
     setCurrentPage,
     totalPages,

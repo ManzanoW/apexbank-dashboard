@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useMemo, useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useTransactions } from './useTransactions';
 import { useTheme } from './useTheme';
-import { TransactionType, TransactionCategory, SavingsGoal } from './types';
+import { TransactionType, TransactionCategory, DateFilter } from './types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { 
   ArrowUpCircle, 
@@ -19,7 +19,8 @@ import {
   CheckCircle2,
   Tag,
   Trash2,
-  Target
+  Target,
+  Calendar
 } from 'lucide-react';
 
 export default function TransactionDashboard() {
@@ -29,6 +30,8 @@ export default function TransactionDashboard() {
     balance, 
     filter, 
     setFilter, 
+    dateFilter,
+    setDateFilter,
     currentPage, 
     setCurrentPage, 
     totalPages, 
@@ -49,7 +52,6 @@ export default function TransactionDashboard() {
   const [category, setCategory] = useState<TransactionCategory>('Alimentação');
   const [showSuccessFeedback, setShowSuccessFeedback] = useState(false);
 
-  // Cálculo da porcentagem da meta com limite de 100%
   const goalPercentage = useMemo(() => {
     return Math.min(100, Math.round((goal.currentSaved / goal.targetAmount) * 100));
   }, [goal]);
@@ -131,12 +133,12 @@ export default function TransactionDashboard() {
         <div className="bg-bg-card p-4 rounded-2xl shadow-xs border border-border-custom h-36 flex flex-col justify-between">
           <p className="text-xs text-text-muted font-bold uppercase tracking-wider flex items-center gap-1.5">
             <Activity size={13} />
-            Distribuição de Despesas
+            Distribuição do Período
           </p>
           {isLoading ? (
             <div className="h-20 w-full bg-border-custom/50 animate-pulse rounded-xl mt-2" />
           ) : chartData.length === 0 ? (
-            <p className="text-[11px] text-text-muted font-medium m-auto">Sem despesas registradas para análise.</p>
+            <p className="text-[11px] text-text-muted font-medium m-auto">Sem despesas registradas neste período.</p>
           ) : (
             <ResponsiveContainer width="100%" height="75%">
               <BarChart data={chartData} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
@@ -163,7 +165,7 @@ export default function TransactionDashboard() {
         </div>
       </div>
 
-      {/* NOVO: Seção Customizada de Metas Financeiras (Savings Goals) */}
+      {/* Seção de Metas Financeiras */}
       <div className="bg-bg-card rounded-2xl shadow-xs border border-border-custom p-5">
         {isLoading ? (
           <div className="space-y-3">
@@ -185,13 +187,11 @@ export default function TransactionDashboard() {
                 </div>
               </div>
 
-              {/* Botões rápidos de controle da meta */}
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={() => updateGoalAmount(goal.currentSaved - 50)}
                   disabled={goal.currentSaved <= 0}
                   className="p-1 border border-border-custom rounded-lg bg-bg-page text-text-main hover:bg-border-custom/30 cursor-pointer disabled:opacity-30 transition-all"
-                  title="Remover R$ 50 da meta"
                 >
                   <Minus size={12} />
                 </button>
@@ -202,14 +202,12 @@ export default function TransactionDashboard() {
                   onClick={() => updateGoalAmount(goal.currentSaved + 50)}
                   disabled={goal.currentSaved >= goal.targetAmount}
                   className="p-1 border border-border-custom rounded-lg bg-bg-page text-text-main hover:bg-border-custom/30 cursor-pointer disabled:opacity-30 transition-all"
-                  title="Paupar R$ 50 na meta"
                 >
                   <Plus size={12} />
                 </button>
               </div>
             </div>
 
-            {/* Barra de progresso animada */}
             <div className="space-y-1">
               <div className="w-full bg-bg-page rounded-full h-2 overflow-hidden border border-border-custom">
                 <div 
@@ -313,29 +311,62 @@ export default function TransactionDashboard() {
       </div>
 
       {/* Seção do Extrato */}
-      <div className="bg-bg-card rounded-2xl shadow-xs border border-border-custom p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h4 className="text-sm font-bold text-text-main">Histórico de Transações</h4>
-            <p className="text-[11px] font-semibold text-text-muted mt-0.5">Mostrando {transactions.length} de {totalCount} registros</p>
+      <div className="bg-bg-card rounded-2xl shadow-xs border border-border-custom p-5 space-y-4">
+        
+        {/* FILTROS DA LISTA (Tipo + Período) */}
+        <div className="flex flex-col gap-3 pb-3 border-b border-border-custom">
+          
+          {/* Linha 1: Título do Extrato e Filtros por Tipo */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="text-sm font-bold text-text-main">Histórico de Transações</h4>
+              <p className="text-[11px] font-semibold text-text-muted mt-0.5">Mostrando {transactions.length} de {totalCount} registros</p>
+            </div>
+            <div className="flex gap-1 bg-bg-page p-1 rounded-xl border border-border-custom">
+              {(['ALL', 'CREDIT', 'DEBIT'] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setFilter(t)}
+                  disabled={isLoading}
+                  className={`px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all cursor-pointer ${
+                    filter === t ? 'bg-bg-card text-text-main shadow-xs border border-border-custom' : 'text-text-muted hover:text-text-main'
+                  }`}
+                >
+                  {t === 'ALL' ? 'Todos' : t === 'CREDIT' ? 'Entradas' : 'Saídas'}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="flex gap-1 bg-bg-page p-1 rounded-xl border border-border-custom">
-            {(['ALL', 'CREDIT', 'DEBIT'] as const).map((t) => (
-              <button
-                key={t}
-                onClick={() => setFilter(t)}
-                disabled={isLoading}
-                className={`px-3 py-1.5 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
-                  filter === t ? 'bg-bg-card text-text-main shadow-xs border border-border-custom' : 'text-text-muted hover:text-text-main'
-                }`}
-              >
-                {t === 'ALL' ? 'Todos' : t === 'CREDIT' ? 'Entradas' : 'Saídas'}
-              </button>
-            ))}
+
+          {/* NOVO: Linha 2: Barra de Filtros Cronológicos (Período) */}
+          <div className="flex items-center justify-between pt-1">
+            <span className="text-[11px] font-bold text-text-muted flex items-center gap-1">
+              <Calendar size={12} />
+              Filtrar por período:
+            </span>
+            <div className="flex gap-1 bg-bg-page/60 p-0.5 rounded-lg border border-border-custom/50">
+              {([
+                { key: 'ALL', label: 'Tudo' },
+                { key: '7_DAYS', label: '7 dias' },
+                { key: '30_DAYS', label: '30 dias' }
+              ] as const).map((d) => (
+                <button
+                  key={d.key}
+                  onClick={() => setDateFilter(d.key)}
+                  disabled={isLoading}
+                  className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
+                    dateFilter === d.key ? 'bg-bg-card text-text-main shadow-xs border border-border-custom' : 'text-text-muted hover:text-text-main'
+                  }`}
+                >
+                  {d.label}
+                </button>
+              ))}
+            </div>
           </div>
+
         </div>
 
-        <ul className="divide-y divide-border-custom border-t border-border-custom mb-4">
+        <ul className="divide-y divide-border-custom mb-4">
           {isLoading ? (
             Array.from({ length: 3 }).map((_, i) => (
               <li key={i} className="flex justify-between py-4 items-center">
@@ -344,7 +375,7 @@ export default function TransactionDashboard() {
               </li>
             ))
           ) : transactions.length === 0 ? (
-            <div className="text-center py-10 text-sm font-medium text-text-muted">Nenhuma movimentação encontrada.</div>
+            <div className="text-center py-10 text-sm font-medium text-text-muted">Nenhuma movimentação encontrada neste período.</div>
           ) : (
             transactions.map((tx) => (
               <li key={tx.id} className="flex justify-between py-3.5 items-center hover:bg-bg-page/40 px-2.5 -mx-2.5 rounded-xl transition-all duration-200 animate-fade-in-down group">
