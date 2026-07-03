@@ -32,5 +32,5 @@ Integrates a micro-interaction module for tracking multi-tier financial constrai
 
 1. **Clone the repository:**
    ```bash
-   git clone [https://github.com/YOUR_USERNAME/apexbank-dashboard.git](https://github.com/YOUR_USERNAME/apexbank-dashboard.git)
+   git clone https://github.com/ManzanoW/apexbank-dashboard.git
    cd apexbank-dashboard
