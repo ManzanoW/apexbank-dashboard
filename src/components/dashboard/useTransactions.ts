@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Transaction, TransactionType, TransactionCategory, CreateTransactionInput } from './types';
+import { Transaction, TransactionType, TransactionCategory, CreateTransactionInput, SavingsGoal } from './types';
 
 const INITIAL_MOCK_TRANSACTIONS: Transaction[] = [
   { id: '1', description: 'Pix Recebido - João', amount: 1500.00, type: 'CREDIT', category: 'Salário', date: '2026-07-01' },
@@ -8,10 +8,17 @@ const INITIAL_MOCK_TRANSACTIONS: Transaction[] = [
   { id: '4', description: 'Conta de Energia', amount: -120.50, type: 'DEBIT', category: 'Moradia', date: '2026-07-04' },
 ];
 
+const DEFAULT_GOAL: SavingsGoal = {
+  title: 'Reserva de Emergência',
+  targetAmount: 5000,
+  currentSaved: 450
+};
+
 const ITEMS_PER_PAGE = 3;
 
 export function useTransactions() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [goal, setGoal] = useState<SavingsGoal>(DEFAULT_GOAL); // NOVO ESTADO
   const [filter, setFilter] = useState<TransactionType | 'ALL'>('ALL');
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
@@ -19,6 +26,8 @@ export function useTransactions() {
 
   useEffect(() => {
     const savedTransactions = localStorage.getItem('apexbank_transactions');
+    const savedGoal = localStorage.getItem('apexbank_goal');
+    
     const timer = setTimeout(() => {
       if (savedTransactions) {
         setTransactions(JSON.parse(savedTransactions));
@@ -26,6 +35,13 @@ export function useTransactions() {
         setTransactions(INITIAL_MOCK_TRANSACTIONS);
         localStorage.setItem('apexbank_transactions', JSON.stringify(INITIAL_MOCK_TRANSACTIONS));
       }
+
+      if (savedGoal) {
+        setGoal(JSON.parse(savedGoal));
+      } else {
+        localStorage.setItem('apexbank_goal', JSON.stringify(DEFAULT_GOAL));
+      }
+      
       setIsLoading(false);
     }, 1200);
     return () => clearTimeout(timer);
@@ -56,26 +72,16 @@ export function useTransactions() {
 
   const chartData = useMemo(() => {
     const categories: Record<TransactionCategory, number> = {
-      'Alimentação': 0,
-      'Lazer': 0,
-      'Moradia': 0,
-      'Salário': 0,
-      'Outros': 0
+      'Alimentação': 0, 'Lazer': 0, 'Moradia': 0, 'Salário': 0, 'Outros': 0
     };
-
-    transactions
-      .filter(t => t.type === 'DEBIT')
-      .forEach(t => {
-        categories[t.category] += Math.abs(t.amount);
-      });
-
-    return Object.keys(categories)
-      .map(key => ({
-        name: key,
-        valor: categories[key as TransactionCategory],
-        fill: key === 'Alimentação' ? '#3b82f6' : key === 'Lazer' ? '#ec4899' : key === 'Moradia' ? '#eab308' : '#71717a'
-      }))
-      .filter(item => item.valor > 0);
+    transactions.filter(t => t.type === 'DEBIT').forEach(t => {
+      categories[t.category] += Math.abs(t.amount);
+    });
+    return Object.keys(categories).map(key => ({
+      name: key,
+      valor: categories[key as TransactionCategory],
+      fill: key === 'Alimentação' ? '#3b82f6' : key === 'Lazer' ? '#ec4899' : key === 'Moradia' ? '#eab308' : '#71717a'
+    })).filter(item => item.valor > 0);
   }, [transactions]);
 
   const addTransaction = async (input: CreateTransactionInput) => {
@@ -98,17 +104,19 @@ export function useTransactions() {
     setIsSubmitting(false);
   };
 
-  // NOVO: Função para deletar movimentações do estado e do localStorage
   const deleteTransaction = (id: string) => {
     const updatedTransactions = transactions.filter(t => t.id !== id);
     setTransactions(updatedTransactions);
     localStorage.setItem('apexbank_transactions', JSON.stringify(updatedTransactions));
-    
-    // Ajuste de segurança: Se a exclusão esvaziar a página atual, volta uma página
     const maxPages = Math.ceil(updatedTransactions.length / ITEMS_PER_PAGE) || 1;
-    if (currentPage > maxPages) {
-      setCurrentPage(maxPages);
-    }
+    if (currentPage > maxPages) setCurrentPage(maxPages);
+  };
+
+  // NOVO: Altera o valor guardado na meta e persiste
+  const updateGoalAmount = (amountToSave: number) => {
+    const updatedGoal = { ...goal, currentSaved: Math.max(0, amountToSave) };
+    setGoal(updatedGoal);
+    localStorage.setItem('apexbank_goal', JSON.stringify(updatedGoal));
   };
 
   return {
@@ -124,6 +132,8 @@ export function useTransactions() {
     isSubmitting,
     addTransaction,
     chartData,
-    deleteTransaction, // Exposto para a UI
+    deleteTransaction,
+    goal, // Exportado
+    updateGoalAmount // Exportado
   };
 }

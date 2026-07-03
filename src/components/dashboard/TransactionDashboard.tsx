@@ -1,14 +1,15 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTransactions } from './useTransactions';
 import { useTheme } from './useTheme';
-import { TransactionType, TransactionCategory } from './types';
+import { TransactionType, TransactionCategory, SavingsGoal } from './types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { 
   ArrowUpCircle, 
   ArrowDownCircle, 
   Plus, 
+  Minus,
   Moon, 
   Sun, 
   ChevronLeft, 
@@ -17,7 +18,8 @@ import {
   Activity,
   CheckCircle2,
   Tag,
-  Trash2
+  Trash2,
+  Target
 } from 'lucide-react';
 
 export default function TransactionDashboard() {
@@ -34,7 +36,9 @@ export default function TransactionDashboard() {
     isSubmitting, 
     addTransaction, 
     chartData,
-    deleteTransaction // Resgatando do hook
+    deleteTransaction,
+    goal,
+    updateGoalAmount
   } = useTransactions();
   
   const { theme, toggleTheme, mounted } = useTheme();
@@ -44,6 +48,11 @@ export default function TransactionDashboard() {
   const [type, setType] = useState<TransactionType>('DEBIT');
   const [category, setCategory] = useState<TransactionCategory>('Alimentação');
   const [showSuccessFeedback, setShowSuccessFeedback] = useState(false);
+
+  // Cálculo da porcentagem da meta com limite de 100%
+  const goalPercentage = useMemo(() => {
+    return Math.min(100, Math.round((goal.currentSaved / goal.targetAmount) * 100));
+  }, [goal]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -154,6 +163,69 @@ export default function TransactionDashboard() {
         </div>
       </div>
 
+      {/* NOVO: Seção Customizada de Metas Financeiras (Savings Goals) */}
+      <div className="bg-bg-card rounded-2xl shadow-xs border border-border-custom p-5">
+        {isLoading ? (
+          <div className="space-y-3">
+            <div className="h-4 w-32 bg-border-custom/50 animate-pulse rounded" />
+            <div className="h-3 w-full bg-border-custom/50 animate-pulse rounded-full" />
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-500">
+                  <Target size={16} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-text-main">{goal.title}</h4>
+                  <p className="text-xs text-text-muted">
+                    Meta de {goal.targetAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </p>
+                </div>
+              </div>
+
+              {/* Botões rápidos de controle da meta */}
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => updateGoalAmount(goal.currentSaved - 50)}
+                  disabled={goal.currentSaved <= 0}
+                  className="p-1 border border-border-custom rounded-lg bg-bg-page text-text-main hover:bg-border-custom/30 cursor-pointer disabled:opacity-30 transition-all"
+                  title="Remover R$ 50 da meta"
+                >
+                  <Minus size={12} />
+                </button>
+                <span className="text-xs font-bold text-text-main min-w-16 text-center">
+                  {goal.currentSaved.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </span>
+                <button
+                  onClick={() => updateGoalAmount(goal.currentSaved + 50)}
+                  disabled={goal.currentSaved >= goal.targetAmount}
+                  className="p-1 border border-border-custom rounded-lg bg-bg-page text-text-main hover:bg-border-custom/30 cursor-pointer disabled:opacity-30 transition-all"
+                  title="Paupar R$ 50 na meta"
+                >
+                  <Plus size={12} />
+                </button>
+              </div>
+            </div>
+
+            {/* Barra de progresso animada */}
+            <div className="space-y-1">
+              <div className="w-full bg-bg-page rounded-full h-2 overflow-hidden border border-border-custom">
+                <div 
+                  className="bg-blue-500 h-full rounded-full transition-all duration-500 ease-out"
+                  style={{ width: `${goalPercentage}%` }}
+                />
+              </div>
+              <div className="flex justify-between items-center text-[10px] font-bold text-text-muted">
+                <span>Progresso</span>
+                <span>{goalPercentage}%</span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Formulário de Nova Transação */}
       <div className="bg-bg-card rounded-2xl shadow-xs border border-border-custom p-5">
         <h4 className="text-sm font-bold text-text-main mb-4">Lançamento Rápido</h4>
@@ -208,9 +280,7 @@ export default function TransactionDashboard() {
                 onClick={() => setType('DEBIT')}
                 disabled={isSubmitting || isLoading}
                 className={`px-3 py-2 text-xs font-bold rounded-xl border transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${
-                  type === 'DEBIT' 
-                    ? 'bg-red-50 dark:bg-red-950/20 text-bank-danger border-red-200 dark:border-red-900/40' 
-                    : 'bg-bg-card text-text-muted border-border-custom hover:bg-bg-page'
+                  type === 'DEBIT' ? 'bg-red-50 dark:bg-red-950/20 text-bank-danger border-red-200 dark:border-red-900/40' : 'bg-bg-card text-text-muted border-border-custom hover:bg-bg-page'
                 }`}
               >
                 <ArrowDownCircle size={14} />
@@ -221,9 +291,7 @@ export default function TransactionDashboard() {
                 onClick={() => setType('CREDIT')}
                 disabled={isSubmitting || isLoading}
                 className={`px-3 py-2 text-xs font-bold rounded-xl border transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${
-                  type === 'CREDIT' 
-                    ? 'bg-green-50 dark:bg-green-950/20 text-bank-success border-green-200 dark:border-green-900/40' 
-                    : 'bg-bg-card text-text-muted border-border-custom hover:bg-bg-page'
+                  type === 'CREDIT' ? 'bg-green-50 dark:bg-green-950/20 text-bank-success border-green-200 dark:border-green-900/40' : 'bg-bg-card text-text-muted border-border-custom hover:bg-bg-page'
                 }`}
               >
                 <ArrowUpCircle size={14} />
@@ -279,7 +347,6 @@ export default function TransactionDashboard() {
             <div className="text-center py-10 text-sm font-medium text-text-muted">Nenhuma movimentação encontrada.</div>
           ) : (
             transactions.map((tx) => (
-              // ADICIONADA A CLASSE 'group' NA LI PARA CONTROLAR OS BOTÕES INTERNOS NO HOVER
               <li key={tx.id} className="flex justify-between py-3.5 items-center hover:bg-bg-page/40 px-2.5 -mx-2.5 rounded-xl transition-all duration-200 animate-fade-in-down group">
                 <div className="flex items-center gap-3">
                   <div className={`h-8 w-8 rounded-lg flex items-center justify-center border ${
@@ -299,14 +366,12 @@ export default function TransactionDashboard() {
                   </div>
                 </div>
                 
-                {/* FLEX CONTAINER DIREITO: Controla o valor e o botão de exclusão que aparece no hover */}
                 <div className="flex items-center gap-3">
-                  <span className={`font-extrabold text-sm transition-all duration-200 group-hover:translate-x-[-4px] ${tx.type === 'CREDIT' ? 'text-bank-success' : 'text-bank-danger'}`}>
+                  <span className={`font-extrabold text-sm transition-all duration-200 group-hover:-translate-x-1 ${tx.type === 'CREDIT' ? 'text-bank-success' : 'text-bank-danger'}`}>
                     {tx.type === 'CREDIT' ? '+' : ''}
                     {tx.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                   </span>
                   
-                  {/* Botão de Excluir Premium e Discreto */}
                   <button
                     onClick={() => deleteTransaction(tx.id)}
                     className="p-1.5 rounded-lg text-text-muted hover:text-bank-danger hover:bg-red-50 dark:hover:bg-red-950/20 opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-pointer scale-90 group-hover:scale-100"

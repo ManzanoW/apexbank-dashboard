@@ -1,6 +1,4 @@
 export type TransactionType = 'CREDIT' | 'DEBIT';
-
-// Definição das categorias aceitas no sistema
 export type TransactionCategory = 'Alimentação' | 'Salário' | 'Lazer' | 'Moradia' | 'Outros';
 
 export interface Transaction {
@@ -8,7 +6,7 @@ export interface Transaction {
   description: string;
   amount: number;
   type: TransactionType;
-  category: TransactionCategory; // Novo campo
+  category: TransactionCategory;
   date: string;
 }
 
@@ -16,5 +14,12 @@ export interface CreateTransactionInput {
   description: string;
   amount: number;
   type: TransactionType;
-  category: TransactionCategory; // Novo campo
+  category: TransactionCategory;
+}
+
+// NOVO: Tipo para a meta financeira
+export interface SavingsGoal {
+  title: string;
+  targetAmount: number;
+  currentSaved: number;
 }
